@@ -1,0 +1,5 @@
+[functions.agent-weekly-report]
+verify_jwt = true
+
+[functions.agent-chat]
+verify_jwt = true

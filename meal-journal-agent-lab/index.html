@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f3f0e8">
+  <meta name="description" content="Mia's Eating Life 独立 Agent 实验版：只读分析饮食记录，生成周报与建议。">
+  <title>Mia Agent · 饮食洞察实验室</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23214b39'/%3E%3Ccircle cx='32' cy='19' r='4' fill='%23c9e265'/%3E%3Ccircle cx='20' cy='39' r='4' fill='%23c9e265'/%3E%3Ccircle cx='44' cy='39' r='4' fill='%23c9e265'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到主要内容</a>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="#overview" aria-label="Mia Agent 首页">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span><b>MIA AGENT</b><small>Eating Intelligence Lab</small></span>
+      </a>
+      <div class="topbar-actions">
+        <span class="lab-badge">独立实验版</span>
+        <button class="profile-button" id="profileButton" type="button" aria-label="账户状态">
+          <span class="status-dot"></span><span id="profileLabel">未登录</span>
+        </button>
+      </div>
+    </header>
+
+    <aside class="sidebar" aria-label="主导航">
+      <nav>
+        <button class="nav-item active" type="button" data-view="overview" aria-current="page">
+          <span aria-hidden="true">⌁</span><b>本周洞察</b>
+        </button>
+        <button class="nav-item" type="button" data-view="history">
+          <span aria-hidden="true">▤</span><b>历史周报</b>
+        </button>
+        <button class="nav-item" type="button" data-view="chat">
+          <span aria-hidden="true">◌</span><b>问问 Agent</b>
+        </button>
+      </nav>
+      <div class="permission-card">
+        <span class="eyebrow">AGENT 权限</span>
+        <strong>只读原始记录</strong>
+        <p>可分析、生成报告和回答问题，不会增删改任何一餐。</p>
+      </div>
+      <a class="back-link" href="https://mia-003.github.io/meal-journal/">↗ 返回原版记录网站</a>
+    </aside>
+
+    <main id="main" tabindex="-1">
+      <section class="view active" id="overview" aria-labelledby="overviewTitle">
+        <div class="page-heading">
+          <div>
+            <span class="eyebrow">WEEKLY SIGNAL / <span id="weekCode">—</span></span>
+            <h1 id="overviewTitle">这周，吃得怎么样？</h1>
+            <p id="weekRange">登录后，Agent 会读取你的云端饮食记录并生成分析。</p>
+          </div>
+          <button class="primary-button" id="generateButton" type="button" disabled>
+            <span aria-hidden="true">↻</span><span>生成本周报告</span>
+          </button>
+        </div>
+
+        <div class="notice auth-notice" id="authNotice">
+          <div>
+            <span class="notice-icon" aria-hidden="true">→</span>
+            <div><strong>先登录同一个饮食记录账户</strong><p>Agent 才能安全读取属于你的云端数据。</p></div>
+          </div>
+          <button class="text-button" type="button" data-open-auth>登录</button>
+        </div>
+
+        <div class="status-panel" id="reportStatus" hidden role="status" aria-live="polite">
+          <span class="spinner" aria-hidden="true"></span>
+          <div><strong>Agent 正在分析本周记录</strong><p id="statusDetail">汇总热量与花费…</p></div>
+        </div>
+
+        <div id="reportContent" hidden>
+          <section class="summary-grid" aria-label="本周核心指标">
+            <article class="metric-card feature">
+              <span class="metric-label">本周总摄入</span>
+              <strong><span id="totalKcal">0</span><small> kcal</small></strong>
+              <p id="kcalDelta">等待对比上周</p>
+              <div class="spark-bars" id="calorieBars" aria-label="每日热量趋势"></div>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">本周总花费</span>
+              <strong><small>¥</small><span id="totalCost">0</span></strong>
+              <p id="costDelta">等待对比上周</p>
+              <span class="metric-foot" id="costAverage">—</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">记录完整度</span>
+              <strong><span id="loggedDays">0</span><small> / 7 天</small></strong>
+              <p id="recordCount">0 餐记录</p>
+              <div class="day-dots" id="dayDots" aria-label="每日记录状态"></div>
+            </article>
+          </section>
+
+          <section class="analysis-layout">
+            <article class="panel nutrition-panel">
+              <div class="panel-heading">
+                <div><span class="eyebrow">NUTRITION LENS</span><h2>营养结构观察</h2></div>
+                <span class="confidence" id="nutritionConfidence">估算可信度 —</span>
+              </div>
+              <p class="panel-intro">根据文字记录做方向性判断，不等同于营养成分检测。</p>
+              <div class="nutrient-list" id="nutrientList"></div>
+            </article>
+
+            <article class="panel agent-panel">
+              <div class="panel-heading">
+                <div><span class="eyebrow">AGENT BRIEFING</span><h2>本周最值得关注</h2></div>
+                <span class="agent-orbit" aria-hidden="true"><i></i></span>
+              </div>
+              <div class="briefing" id="briefing"></div>
+              <button class="secondary-button" type="button" data-view-jump="chat">基于本周报告继续追问 →</button>
+            </article>
+          </section>
+
+          <section class="panel trend-panel">
+            <div class="panel-heading">
+              <div><span class="eyebrow">7-DAY TRACE</span><h2>摄入与花费趋势</h2></div>
+              <div class="chart-legend"><span><i class="legend-kcal"></i>热量</span><span><i class="legend-cost"></i>花费</span></div>
+            </div>
+            <div class="trend-chart" id="trendChart"></div>
+          </section>
+          <p class="generated-note" id="generatedNote"></p>
+        </div>
+
+        <div class="empty-report" id="emptyReport">
+          <span class="empty-orbit" aria-hidden="true"><i></i></span>
+          <h2>你的第一份 Agent 周报在这里生成</h2>
+          <p>登录后，系统会汇总热量、花费与营养结构。原始饮食记录只会被读取，不会被修改。</p>
+        </div>
+      </section>
+
+      <section class="view" id="history" aria-labelledby="historyTitle">
+        <div class="page-heading compact">
+          <div><span class="eyebrow">REPORT ARCHIVE</span><h1 id="historyTitle">历史周报</h1><p>回看每周变化，不用依赖记忆判断趋势。</p></div>
+        </div>
+        <div class="history-list" id="historyList">
+          <div class="empty-list">登录后会显示已生成的周报。</div>
+        </div>
+      </section>
+
+      <section class="view" id="chat" aria-labelledby="chatTitle">
+        <div class="page-heading compact">
+          <div><span class="eyebrow">EVIDENCE-BASED CHAT</span><h1 id="chatTitle">问问 Mia Agent</h1><p>回答会引用你的记录与周报，不会替你改动数据。</p></div>
+        </div>
+        <div class="chat-layout">
+          <section class="chat-panel" aria-label="与 Mia Agent 对话">
+            <div class="messages" id="messages" aria-live="polite">
+              <div class="message agent"><span class="message-author">MIA AGENT</span><p>登录并生成一份周报后，你可以问我：“这周花费为什么变高？”或“下周最值得先调整什么？”</p></div>
+            </div>
+            <div class="prompt-chips" id="promptChips">
+              <button type="button">这周最明显的饮食规律是什么？</button>
+              <button type="button">我的营养结构哪里最需要改善？</button>
+              <button type="button">如何同时控制花费和热量？</button>
+            </div>
+            <form class="chat-form" id="chatForm">
+              <label class="sr-only" for="chatInput">向 Agent 提问</label>
+              <textarea id="chatInput" rows="2" maxlength="800" placeholder="基于我的记录问一个问题…" required></textarea>
+              <button type="submit" aria-label="发送问题">↑</button>
+            </form>
+          </section>
+          <aside class="context-panel">
+            <span class="eyebrow">CURRENT CONTEXT</span>
+            <h2>Agent 正在参考</h2>
+            <ul>
+              <li><span>01</span>你本周和上周的云端饮食记录</li>
+              <li><span>02</span>最近生成的营养结构分析</li>
+              <li><span>03</span>热量与花费的确定性汇总</li>
+            </ul>
+            <p>不会读取照片内容，也不提供医疗诊断。</p>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="auth-dialog" id="authDialog" aria-labelledby="authTitle">
+    <form method="dialog"><button class="dialog-close" aria-label="关闭">×</button></form>
+    <span class="eyebrow">SECURE ACCESS</span>
+    <h2 id="authTitle">登录饮食记录账户</h2>
+    <p>输入原网站使用的邮箱。Supabase 会发送一次性登录链接，不需要密码。</p>
+    <form id="authForm">
+      <label for="emailInput">邮箱</label>
+      <input id="emailInput" type="email" autocomplete="email" inputmode="email" placeholder="name@example.com" required>
+      <button class="primary-button" type="submit">发送登录链接</button>
+    </form>
+    <p class="form-status" id="authStatus" role="status" aria-live="polite"></p>
+    <button class="signout-button" id="signOutButton" type="button" hidden>退出当前账户</button>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
