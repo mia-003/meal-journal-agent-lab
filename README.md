@@ -1,5 +1,7 @@
 # Mia's Eating Life · Agent Lab
 
+[中文](README.md) | [English](README.en.md)
+
 这是一个与原网站完全分开的实验版本。它读取同一 Supabase 账户下的饮食记录，自动生成周报，并允许基于证据追问。它没有新增、编辑或删除原始饮食记录的功能。
 
 ## 已实现
